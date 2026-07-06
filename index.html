@@ -128,7 +128,7 @@
         .card-3d:first-child { margin-left: 0; }
         .card-3d.dealt { transform: rotateY(0deg) translate3d(0, 0, 0) scale(1); opacity: 1; }
         .card-3d.dealt.hidden-card { transform: rotateY(180deg) translate3d(0, 0, 0) scale(1); opacity: 1; }
-        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 6px; border: 1px solid #2b1f1d; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; font-family: sans-serif; font-weight: 900; box-shadow: 2px 5px 10px rgba(0,0,0,0.8); }
+        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 6px; border: 1px solid #2b1f1d; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; font-family: sans-serif; font-weight: 900; box-shadow: 2px 5px 10px rgba(0,0,0,0.8); overflow: hidden; }
         .face.front { background: #fdf5e6; color: #111; }
         .face.front.red { color: #d32f2f; }
         .face.back { background: repeating-linear-gradient(45deg, #8a3324, #8a3324 5px, #6b2418 5px, #6b2418 10px); border-color: #fdf5e6; transform: rotateY(180deg); }
@@ -395,7 +395,7 @@
         const sessionStartTime = Date.now();
         let initialRealBalance = 0;
         let initialFreeBalance = 0;
-        const gameEventsLog = []; // массив объектов { time, game, bet, result, winAmount }
+        const gameEventsLog = [];
 
         // ==================== ИГРОВЫЕ ПЕРЕМЕННЫЕ ====================
         let realBalance = 10000;
@@ -488,7 +488,7 @@
             }
         }
 
-        // ==================== СПИСАНИЕ СТАВКИ (СНАЧАЛА ФРИБЕТ) ====================
+        // ==================== СПИСАНИЕ СТАВКИ ====================
         function deductBet(amount) {
             if (freeBalance >= amount) {
                 freeBalance -= amount;
@@ -536,7 +536,7 @@
             play('key');
         }
 
-        // ==================== ГЛОБАЛЬНОЕ ОХЛАЖДЕНИЕ КНОПОК ====================
+        // ==================== ГЛОБАЛЬНОЕ ОХЛАЖДЕНИЕ ====================
         function applyGlobalCooldown() {
             if (cdInterval) clearInterval(cdInterval);
             isCooldown = true;
@@ -646,7 +646,7 @@
         }
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // ==================== ТЕРМИНАЛ (ЛОКАЛЬНЫЕ КОМАНДЫ) ====================
+        // ==================== ТЕРМИНАЛ ====================
         const sysCommands = ["CLEAR", "THEME", "STATS", "MATRIX", "DIAGNOSTIC", "PROMO"];
         function openTerminal() { play('key'); document.getElementById('terminalScreen').style.display = 'flex'; document.getElementById('termInput').focus(); }
         function closeTerminal() { play('key'); document.getElementById('terminalScreen').style.display = 'none'; }
@@ -743,7 +743,7 @@
             sysLog(`Модуль: ${tabId.toUpperCase()}`);
         }
 
-        // ==================== 1. СЛОТЫ ====================
+        // ==================== 1. СЛОТЫ (ШАНСЫ УМЕНЬШЕНЫ) ====================
         const slotSymbols = ['💎','🍒','🍋','🔔','🔥','7️⃣'];
         const reelLength = 20;
         const symbolSize = 85;
@@ -773,9 +773,9 @@
                 slotSymbols[Math.floor(Math.random() * slotSymbols.length)],
                 slotSymbols[Math.floor(Math.random() * slotSymbols.length)]
             ];
-            // Увеличенные шансы на совпадения
-            if (Math.random() < 0.20) result[1] = result[0];
-            if (Math.random() < 0.12) result[2] = result[1] = result[0];
+            // Уменьшенные шансы: 10% на два совпадения, 5% на три
+            if (Math.random() < 0.06) result[1] = result[0];
+            if (Math.random() < 0.02) result[2] = result[1] = result[0];
 
             await animateReels(result);
 
@@ -841,7 +841,7 @@
             });
         }
 
-        // ==================== 2. КРАШ ====================
+        // ==================== 2. КРАШ (БЕЗ ИЗМЕНЕНИЙ) ====================
         const crashCanvas = document.getElementById('crashCanvas');
         const crashCtx = crashCanvas.getContext('2d');
         let crashState = 'idle';
@@ -978,7 +978,7 @@
             crashBetActive = false;
             cancelAnimationFrame(crashAnimationId);
             const winAmount = Math.floor(currentBet * crashMultiplier);
-            addWinnings(winAmount, 'real'); // кэшаут всегда на реальный баланс (по желанию можно запоминать источник)
+            addWinnings(winAmount, 'real');
             updateUI();
             saveBalances();
             play('win');
@@ -994,7 +994,7 @@
             applyGlobalCooldown();
         }
 
-        // ==================== 3. БЛЭКДЖЕК ====================
+        // ==================== 3. БЛЭКДЖЕК (ИСПРАВЛЕНО ОТОБРАЖЕНИЕ НИЖНЕЙ ЦИФРЫ) ====================
         const suits = ['♠','♥','♦','♣'];
         const cardValues = ['2','3','4','5','6','7','8','9','10','10','10','10','Т'];
         let playerHand = [], dealerHand = [], blackjackActive = false, blackjackOriginalBet = 0, deck = [];
@@ -1013,7 +1013,7 @@
             wrap.className = 'card-3d';
             const red = ['♥','♦'].includes(card.suit) ? 'red' : '';
             const fontSize = card.val === 'Т' ? '36px' : '26px';
-            wrap.innerHTML = `<div class="face back"></div><div class="face front ${red}"><div style="font-size:12px;line-height:1;">${card.val}<br>${card.suit}</div><div style="font-size:${fontSize};align-self:center;display:flex;justify-content:center;align-items:center;flex:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.2));">${card.suit}</div><div style="font-size:12px;line-height:1;align-self:flex-end;transform:rotate(180deg);">${card.val}<br>${card.suit}</div></div>`;
+            wrap.innerHTML = `<div class="face back"></div><div class="face front ${red}" style="overflow:hidden;"><div style="font-size:10px;line-height:1;">${card.val}<br>${card.suit}</div><div style="font-size:${fontSize};align-self:center;display:flex;justify-content:center;align-items:center;flex:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.2));">${card.suit}</div><div style="font-size:10px;line-height:1;align-self:flex-end;transform:rotate(180deg);">${card.val}<br>${card.suit}</div></div>`;
             if (hidden) wrap.classList.add('hidden-card');
             return wrap;
         }
@@ -1163,7 +1163,7 @@
             applyGlobalCooldown();
         }
 
-        // ==================== 4. МИНЫ ====================
+        // ==================== 4. МИНЫ (БЕЗ ИЗМЕНЕНИЙ) ====================
         let minesCount = 3, minesLocations = [], revealedTiles = 0, minesMultiplier = 1.0, minesActive = false;
         function updateMinesCount() { minesCount = parseInt(document.getElementById('minesCountSelector').value); initMinesGrid(); play('key'); }
         function initMinesGrid() {
@@ -1249,7 +1249,7 @@
             applyGlobalCooldown();
         }
 
-        // ==================== 5. КОЛЕСО ====================
+        // ==================== 5. КОЛЕСО (ШАНСЫ ЧУТЬ МЕНЬШЕ) ====================
         const wheelCanvas = document.getElementById('wheelCanvas');
         const wheelCtx = wheelCanvas.getContext('2d');
         let wheelSpinning = false;
@@ -1291,9 +1291,10 @@
 
         function getWeightedWheelIndex() {
             const r = Math.random();
-            if (r < 0.30) return [0,3,7][Math.floor(Math.random()*3)];
-            if (r < 0.60) return [2,5][Math.floor(Math.random()*2)];
-            if (r < 0.80) return 4;
+            // 0x - 35%, 0.5x - 30%, 1.5x - 20%, 2x - 10%, 5x - 5%
+            if (r < 0.35) return [0,3,7][Math.floor(Math.random()*3)];
+            if (r < 0.65) return [2,5][Math.floor(Math.random()*2)];
+            if (r < 0.85) return 4;
             if (r < 0.95) return 1;
             return 6;
         }
