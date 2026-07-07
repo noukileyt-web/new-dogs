@@ -381,17 +381,11 @@
     const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : { expand: () => {}, sendData: null, HapticFeedback: null, close: () => { window.close(); } };
     tg.expand();
 
-    // ==================== LOCAL STORAGE (надёжное хранение) ====================
+    // ==================== LOCAL STORAGE ====================
     const db = {
-      get(key) {
-        try { return localStorage.getItem(key); } catch(e) { return null; }
-      },
-      set(key, value) {
-        try { localStorage.setItem(key, value); } catch(e) {}
-      },
-      remove(key) {
-        try { localStorage.removeItem(key); } catch(e) {}
-      }
+      get(key) { try { return localStorage.getItem(key); } catch(e) { return null; } },
+      set(key, value) { try { localStorage.setItem(key, value); } catch(e) {} },
+      remove(key) { try { localStorage.removeItem(key); } catch(e) {} }
     };
 
     // ==================== СЕССИОННЫЕ ДАННЫЕ ====================
@@ -409,7 +403,7 @@
     let isCooldown = false;
     let cdInterval = null;
 
-    // ==================== ЗАЩИТА ОТ СБРОСА БАЛАНСА (localStorage) ====================
+    // ==================== ЗАЩИТА ОТ СБРОСА БАЛАНСА ====================
     function getQueryParam(param) {
       const params = new URLSearchParams(window.location.search);
       return params.get(param);
@@ -430,7 +424,6 @@
         realBalance = savedBal ? parseInt(savedBal) : 10000;
         const savedFree = db.get("es_freebet");
         freeBalance = savedFree ? parseInt(savedFree) : 0;
-        sysLog("Продолжение активной сессии. Баланс: " + realBalance, 'sys');
       } else {
         if (urlBal !== null) {
           realBalance = parseInt(urlBal);
@@ -547,12 +540,9 @@
       play('key');
     }
 
-    // ==================== ОХЛАЖДЕНИЕ (исправлено) ====================
+    // ==================== ОХЛАЖДЕНИЕ ====================
     function applyGlobalCooldown() {
-      if (cdInterval) {
-        clearInterval(cdInterval);
-        cdInterval = null;
-      }
+      if (cdInterval) { clearInterval(cdInterval); cdInterval = null; }
       isCooldown = true;
       const allButtons = document.querySelectorAll('.btn-act');
       allButtons.forEach(btn => btn.disabled = true);
@@ -656,9 +646,7 @@
           break;
       }
     }
-    function haptic() {
-      if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-    }
+    function haptic() { if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); }
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     // ==================== ТЕРМИНАЛ ====================
@@ -758,7 +746,7 @@
       sysLog(`Модуль: ${tabId.toUpperCase()}`);
     }
 
-    // ==================== 1. СЛОТЫ ====================
+    // ==================== 1. СЛОТЫ (1% на пару, 0.005% на три; x1.5 за пару, x3 за три) ====================
     const slotSymbols = ['💎','🍒','🍋','🔔','🔥','7️⃣'];
     const reelLength = 20, symbolSize = 85;
     let isSpinning = false;
@@ -786,18 +774,14 @@
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)],
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)]
       ];
-      if (Math.random() < 0.05) result[1] = result[0];
-      if (Math.random() < 0.005) result[2] = result[1] = result[0];
+      if (Math.random() < 0.01) result[1] = result[0];          // 1% на два совпадения
+      if (Math.random() < 0.00005) result[2] = result[1] = result[0]; // 0.005% на три
 
-      try {
-        await animateReels(result);
-      } catch (e) {
-        // ignore
-      }
+      try { await animateReels(result); } catch (e) {}
 
       let multiplier = 0;
-      if (result[0] === result[1] && result[1] === result[2]) multiplier = result[0] === '7️⃣' ? 50 : 15;
-      else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) multiplier = 2;
+      if (result[0] === result[1] && result[1] === result[2]) multiplier = 3;      // три одинаковых – x3
+      else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) multiplier = 1.5; // два одинаковых – x1.5
 
       const winAmount = currentBet * multiplier;
       if (winAmount > 0) {
@@ -845,7 +829,7 @@
       });
     }
 
-    // ==================== 2. КРАШ ====================
+    // ==================== 2. КРАШ (жёстче) ====================
     const crashCanvas = document.getElementById('crashCanvas');
     const crashCtx = crashCanvas.getContext('2d');
     let crashState = 'idle', crashMultiplier = 1.0, crashPoint = 1.0, crashBetActive = false, crashAnimationId = null, crashTime = 0;
@@ -872,7 +856,7 @@
         if(!source) return showModal('ОШИБКА','Недостаточно средств.');
         updateUI(); saveBalances();
         crashState='fly'; crashBetActive=true; crashTime=0; crashParticles=[];
-        crashPoint = Math.random()<0.08 ? 1.0 : parseFloat((1.2+Math.pow(Math.random(),2.5)*8).toFixed(2));
+        crashPoint = Math.random() < 0.25 ? 1.0 : parseFloat((1.01 + Math.pow(Math.random(), 4.5) * 5).toFixed(2));
         document.getElementById('btn-crash-go').innerText='ЭВАКУАЦИЯ'; document.getElementById('btn-crash-go').classList.add('btn-rust');
         play('rocket');
         crashAnimationLoop();
@@ -922,7 +906,7 @@
       drawCrashIdle(); applyGlobalCooldown();
     }
 
-    // ==================== 3. БЛЭКДЖЕК ====================
+    // ==================== 3. БЛЭКДЖЕК (без подсуживания) ====================
     const suits = ['♠','♥','♦','♣'], cardValues = ['2','3','4','5','6','7','8','9','10','10','10','10','Т'];
     let playerHand=[], dealerHand=[], bjActive=false, bjOriginalBet=0, deck=[];
 
@@ -953,8 +937,7 @@
       document.getElementById('player-score').innerText='0'; document.getElementById('dealer-score').innerText='0';
 
       playerHand.push(drawCard()); await placeCard(playerHand[0],document.getElementById('player-cards'),false);
-      const d1=drawCard(); if(parseInt(d1.val)<7&&Math.random()<0.25) d1.val='10';
-      dealerHand.push(d1); await placeCard(dealerHand[0],document.getElementById('dealer-cards'),false);
+      dealerHand.push(drawCard()); await placeCard(dealerHand[0],document.getElementById('dealer-cards'),false);
       document.getElementById('dealer-score').innerText=cardValue(dealerHand[0]);
       playerHand.push(drawCard()); await placeCard(playerHand[1],document.getElementById('player-cards'),false);
       document.getElementById('player-score').innerText=calcScore(playerHand);
@@ -1005,7 +988,7 @@
       currentBet=bjOriginalBet; updateUI(); saveBalances(); applyGlobalCooldown();
     }
 
-    // ==================== 4. МИНЫ ====================
+    // ==================== 4. МИНЫ (коэффициент 0.85) ====================
     let mCnt=3, mLoc=[], rTiles=0, mMult=1.0, mActive=false;
     function updateMinesCount(){ mCnt=parseInt(document.getElementById('minesCountSelector').value); initMinesGrid(); play('key'); }
     function initMinesGrid(){
@@ -1036,7 +1019,7 @@
       } else {
         t.innerHTML='<div style="transform:rotateY(180deg);">💎</div>'; t.className='mine-tile revealed'; play('card'); rTiles++;
         let p=1.0; for(let k=0;k<rTiles;k++) p*=(25-mCnt-k)/(25-k);
-        mMult=parseFloat((0.95/p).toFixed(2));
+        mMult=parseFloat((0.85/p).toFixed(2));
         document.getElementById('btn-mines-go').innerText=`ЗАБРАТЬ ${mMult.toFixed(2)}x`;
         if(rTiles===25-mCnt) cashOutMines();
       }
@@ -1054,7 +1037,7 @@
       updateUI(); saveBalances(); applyGlobalCooldown();
     }
 
-    // ==================== 5. КОЛЕСО ====================
+    // ==================== 5. КОЛЕСО (уменьшены шансы на крупные выигрыши) ====================
     const wCanvas=document.getElementById('wheelCanvas'), wCtx=wCanvas.getContext('2d');
     let wheelSpinning=false, currentWheelAngle=0;
 
@@ -1081,11 +1064,11 @@
 
     function getWheelIndex(){
       const r=Math.random();
-      if(r<0.35) return [0,3,7][Math.floor(Math.random()*3)];
-      if(r<0.65) return [2,5][Math.floor(Math.random()*2)];
-      if(r<0.85) return 4;
-      if(r<0.95) return 1;
-      return 6;
+      if(r<0.55) return [0,3,7][Math.floor(Math.random()*3)]; // 0x - 55%
+      if(r<0.80) return [2,5][Math.floor(Math.random()*2)];   // 0.5x - 25%
+      if(r<0.93) return 4;                                   // 1.5x - 13%
+      if(r<0.99) return 1;                                   // 2x - 6%
+      return 6;                                               // 5x - 1%
     }
 
     async function startWheel(){
