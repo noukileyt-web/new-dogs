@@ -381,7 +381,7 @@
     const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : { expand: () => {}, sendData: null, HapticFeedback: null, close: () => { window.close(); } };
     tg.expand();
 
-    // ==================== LOCAL STORAGE (без CloudStorage, надёжно) ====================
+    // ==================== LOCAL STORAGE (надёжное хранение) ====================
     const db = {
       get(key) {
         try { return localStorage.getItem(key); } catch(e) { return null; }
@@ -426,14 +426,12 @@
       const sessionActive = db.get('es_session_active');
 
       if (sessionActive === '1') {
-        // Сессия уже активна – восстанавливаем из хранилища, игнорируем URL
         const savedBal = db.get("es_bal");
         realBalance = savedBal ? parseInt(savedBal) : 10000;
         const savedFree = db.get("es_freebet");
         freeBalance = savedFree ? parseInt(savedFree) : 0;
         sysLog("Продолжение активной сессии. Баланс: " + realBalance, 'sys');
       } else {
-        // Первая загрузка (сессия не активна)
         if (urlBal !== null) {
           realBalance = parseInt(urlBal);
           db.set("es_bal", realBalance.toString());
@@ -443,8 +441,6 @@
         }
         const savedFree = db.get("es_freebet");
         freeBalance = savedFree ? parseInt(savedFree) : 0;
-
-        // Устанавливаем флаг активной сессии
         db.set('es_session_active', '1');
       }
 
@@ -762,7 +758,7 @@
       sysLog(`Модуль: ${tabId.toUpperCase()}`);
     }
 
-    // ==================== 1. СЛОТЫ (исправлены) ====================
+    // ==================== 1. СЛОТЫ ====================
     const slotSymbols = ['💎','🍒','🍋','🔔','🔥','7️⃣'];
     const reelLength = 20, symbolSize = 85;
     let isSpinning = false;
@@ -790,13 +786,13 @@
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)],
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)]
       ];
-      if (Math.random() < 0.03) result[1] = result[0];
+      if (Math.random() < 0.05) result[1] = result[0];
       if (Math.random() < 0.005) result[2] = result[1] = result[0];
 
       try {
         await animateReels(result);
       } catch (e) {
-        // если анимация прервалась
+        // ignore
       }
 
       let multiplier = 0;
@@ -849,7 +845,7 @@
       });
     }
 
-    // ==================== 2. КРАШ (без изменений) ====================
+    // ==================== 2. КРАШ ====================
     const crashCanvas = document.getElementById('crashCanvas');
     const crashCtx = crashCanvas.getContext('2d');
     let crashState = 'idle', crashMultiplier = 1.0, crashPoint = 1.0, crashBetActive = false, crashAnimationId = null, crashTime = 0;
@@ -1058,7 +1054,7 @@
       updateUI(); saveBalances(); applyGlobalCooldown();
     }
 
-    // ==================== 5. КОЛЕСО (цвета исправлены) ====================
+    // ==================== 5. КОЛЕСО ====================
     const wCanvas=document.getElementById('wheelCanvas'), wCtx=wCanvas.getContext('2d');
     let wheelSpinning=false, currentWheelAngle=0;
 
