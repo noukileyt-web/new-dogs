@@ -783,9 +783,9 @@
       if (result[0] === result[1] && result[1] === result[2]) multiplier = 3;      // три одинаковых – x3
       else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) multiplier = 1.5; // два одинаковых – x1.5
 
-      const winAmount = currentBet * multiplier;
+      const winAmount = Math.floor(currentBet * multiplier); // ИСПРАВЛЕНИЕ: Вычисляем выигрыш корректно
       if (winAmount > 0) {
-        addWinnings(winAmount, source);
+        addWinnings(winAmount, source); // ИСПРАВЛЕНИЕ: Передаем 'source', который вернул deductBet ('real' или 'free')
         play('win');
         showModal('ПОБЕДА', `Множитель: x${multiplier}<br>Выигрыш: +${winAmount}`);
         logGameEvent('slots', currentBet, `win x${multiplier}`, winAmount);
@@ -834,6 +834,7 @@
     const crashCtx = crashCanvas.getContext('2d');
     let crashState = 'idle', crashMultiplier = 1.0, crashPoint = 1.0, crashBetActive = false, crashAnimationId = null, crashTime = 0;
     let crashParticles = [];
+    let activeCrashSource = null;
 
     class CrashParticle {
       constructor(x,y,speed) { this.x=x; this.y=y; this.life=1; this.vx=(Math.random()-0.5)*3; this.vy=Math.random()*3+speed; this.color=`rgba(255,${Math.floor(100+Math.random()*155)},0,`; }
@@ -852,8 +853,8 @@
     function handleCrashAction() {
       if(crashState==='idle'){
         if(isCooldown) return;
-        const source = deductBet(currentBet);
-        if(!source) return showModal('ОШИБКА','Недостаточно средств.');
+        activeCrashSource = deductBet(currentBet);
+        if(!activeCrashSource) return showModal('ОШИБКА','Недостаточно средств.');
         updateUI(); saveBalances();
         crashState='fly'; crashBetActive=true; crashTime=0; crashParticles=[];
         crashPoint = Math.random() < 0.25 ? 1.0 : parseFloat((1.01 + Math.pow(Math.random(), 4.5) * 5).toFixed(2));
@@ -897,8 +898,11 @@
     function cashOutCrash() {
       if(!crashBetActive||crashState!=='fly') return;
       crashBetActive=false; cancelAnimationFrame(crashAnimationId);
-      const winAmount=Math.floor(currentBet*crashMultiplier);
-      addWinnings(winAmount,'real'); updateUI(); saveBalances();
+      
+      const winAmount = Math.floor(currentBet * crashMultiplier); // ИСПРАВЛЕНИЕ: Вычисляем выигрыш корректно
+      addWinnings(winAmount, activeCrashSource); // ИСПРАВЛЕНИЕ: Используем сохраненный source от deductBet
+      updateUI(); saveBalances();
+      
       play('win'); haptic(); logGameEvent('crash',currentBet,`cashout at ${crashMultiplier.toFixed(2)}x`,winAmount);
       showModal('УСПЕХ',`Вы катапультировались на ${crashMultiplier.toFixed(2)}x. Выигрыш: +${winAmount}`);
       crashState='idle'; document.getElementById('btn-crash-go').innerText='СТАРТ'; document.getElementById('btn-crash-go').classList.remove('btn-rust');
@@ -909,6 +913,7 @@
     // ==================== 3. БЛЭКДЖЕК (без подсуживания) ====================
     const suits = ['♠','♥','♦','♣'], cardValues = ['2','3','4','5','6','7','8','9','10','10','10','10','Т'];
     let playerHand=[], dealerHand=[], bjActive=false, bjOriginalBet=0, deck=[];
+    let activeBjSource = null;
 
     function cardValue(c){ return c.val==='Т'?11:parseInt(c.val); }
     function calcScore(h){ let s=0,a=0; h.forEach(c=>{ s+=cardValue(c); if(c.val==='Т')a++; }); while(s>21&&a>0){ s-=10;a--; } return s; }
@@ -927,7 +932,10 @@
 
     async function startBlackjack(){
       if(isCooldown||bjActive) return;
-      const source=deductBet(currentBet); if(!source) return showModal('ОШИБКА','Недостаточно средств.');
+      
+      activeBjSource = deductBet(currentBet); 
+      if(!activeBjSource) return showModal('ОШИБКА','Недостаточно средств.');
+      
       bjOriginalBet=currentBet; updateUI(); saveBalances();
       deck=[]; suits.forEach(s=>cardValues.forEach(v=>deck.push({suit:s,val:v}))); deck.sort(()=>Math.random()-0.5);
       playerHand=[]; dealerHand=[]; bjActive=false;
@@ -960,7 +968,14 @@
     async function blackjackDouble(){
       if(!bjActive||playerHand.length!==2||realBalance<currentBet) return;
       bjActive=false; sysLog('БЛЭКДЖЕК: Удвоение.');
-      realBalance-=currentBet; currentBet*=2; updateUI(); saveBalances();
+      
+      const doubleSource = deductBet(currentBet);
+      if(!doubleSource) return showModal('ОШИБКА','Недостаточно средств для удвоения.');
+      
+      bjOriginalBet *= 2; 
+      currentBet *= 2; 
+      updateUI(); saveBalances();
+      
       document.getElementById('btn-bj-double').style.display='none';
       const gc=document.getElementById('bj-ctrl-game'); gc.style.opacity='0.5'; gc.style.pointerEvents='none';
       playerHand.push(drawCard()); await placeCard(playerHand[playerHand.length-1],document.getElementById('player-cards'),false);
@@ -981,15 +996,30 @@
 
     function finishBj(res){
       bjActive=false; document.getElementById('bj-ctrl-start').style.display='flex'; document.getElementById('bj-ctrl-game').style.display='none';
-      let win=0;
-      if(res==='win'){ win=currentBet*2; addWinnings(win,'real'); play('win'); showModal('ПОБЕДА',`Выигрыш: +${win}`); logGameEvent('blackjack',bjOriginalBet,'win',win); }
-      else if(res==='push'){ addWinnings(currentBet,'real'); showModal('НИЧЬЯ','Ставка возвращена.'); logGameEvent('blackjack',bjOriginalBet,'push',currentBet); }
-      else { play('boom'); showModal('ПОРАЖЕНИЕ',res==='bust'?'Перебор.':'Дилер сильнее.'); logGameEvent('blackjack',bjOriginalBet,res,0); }
+      
+      if(res==='win'){ 
+          let win = currentBet * 2; 
+          addWinnings(win, activeBjSource); // ИСПРАВЛЕНИЕ: Используем 'activeBjSource'
+          play('win'); showModal('ПОБЕДА',`Выигрыш: +${win}`); 
+          logGameEvent('blackjack',bjOriginalBet,'win',win); 
+      }
+      else if(res==='push'){ 
+          addWinnings(currentBet, activeBjSource); // ИСПРАВЛЕНИЕ: Возврат на тот же баланс, с которого списали
+          showModal('НИЧЬЯ','Ставка возвращена.'); 
+          logGameEvent('blackjack',bjOriginalBet,'push',currentBet); 
+      }
+      else { 
+          play('boom'); 
+          showModal('ПОРАЖЕНИЕ',res==='bust'?'Перебор.':'Дилер сильнее.'); 
+          logGameEvent('blackjack',bjOriginalBet,res,0); 
+      }
       currentBet=bjOriginalBet; updateUI(); saveBalances(); applyGlobalCooldown();
     }
 
     // ==================== 4. МИНЫ (коэффициент 0.85) ====================
     let mCnt=3, mLoc=[], rTiles=0, mMult=1.0, mActive=false;
+    let activeMinesSource = null;
+    
     function updateMinesCount(){ mCnt=parseInt(document.getElementById('minesCountSelector').value); initMinesGrid(); play('key'); }
     function initMinesGrid(){
       const g=document.getElementById('minesGrid'); g.innerHTML='';
@@ -998,7 +1028,11 @@
     }
     function handleMinesAction(){
       if(isCooldown) return;
-      if(!mActive) { const src=deductBet(currentBet); if(!src) return showModal('ОШИБКА','Нет средств.'); startMines(); } else cashOutMines();
+      if(!mActive) { 
+          activeMinesSource = deductBet(currentBet); 
+          if(!activeMinesSource) return showModal('ОШИБКА','Нет средств.'); 
+          startMines(); 
+      } else cashOutMines();
     }
     function startMines(){
       mActive=true; rTiles=0; mMult=1.0; mLoc=[];
@@ -1026,7 +1060,9 @@
     }
     function cashOutMines(){
       if(!mActive) return;
-      const win=Math.floor(currentBet*mMult); addWinnings(win,'real'); play('win');
+      const win = Math.floor(currentBet * mMult); // ИСПРАВЛЕНИЕ: Вычисляем выигрыш корректно
+      addWinnings(win, activeMinesSource); // ИСПРАВЛЕНИЕ: Используем 'activeMinesSource'
+      play('win');
       showModal('УСПЕХ',`Забрано на ${mMult.toFixed(2)}x. Выигрыш: +${win}`);
       logGameEvent('mines',currentBet,`cashout x${mMult.toFixed(2)}`,win);
       finishMines(true);
@@ -1073,19 +1109,35 @@
 
     async function startWheel(){
       if(isCooldown||wheelSpinning) return;
-      const src=deductBet(currentBet); if(!src) return showModal('ОШИБКА','Нет средств.');
+      const src = deductBet(currentBet); 
+      if(!src) return showModal('ОШИБКА','Нет средств.');
+      
       wheelSpinning=true; document.getElementById('btn-wheel-go').disabled=true;
       updateUI(); saveBalances();
+      
       const idx=getWheelIndex();
       const targetAngle=(idx*45)+22.5;
       const rotation=360-targetAngle+(Math.random()-0.5)*30;
       currentWheelAngle+=360*5+rotation;
       wCanvas.style.transform=`rotate(${currentWheelAngle}deg)`;
       play('rocket'); await sleep(4000);
-      const mults=[0,2,0.5,0,1.5,0.5,5,0]; const m=mults[idx];
-      const win=Math.floor(currentBet*m);
-      if(win>0){ addWinnings(win,src); play('win'); haptic(); showModal('УСПЕХ',`Выпало: ${m}x. Выигрыш: +${win}`); logGameEvent('wheel',currentBet,`win x${m}`,win); }
-      else { play('boom'); haptic(); showModal('ПОРАЖЕНИЕ','Сектор 0x. Ставка сгорела.'); logGameEvent('wheel',currentBet,'lose',0); }
+      
+      const mults=[0,2,0.5,0,1.5,0.5,5,0]; 
+      const m=mults[idx];
+      const win=Math.floor(currentBet*m); // ИСПРАВЛЕНИЕ: Вычисляем выигрыш корректно
+      
+      if(win>0){ 
+          addWinnings(win, src); // ИСПРАВЛЕНИЕ: Используем 'src'
+          play('win'); haptic(); 
+          showModal('УСПЕХ',`Выпало: ${m}x. Выигрыш: +${win}`); 
+          logGameEvent('wheel',currentBet,`win x${m}`,win); 
+      }
+      else { 
+          play('boom'); haptic(); 
+          showModal('ПОРАЖЕНИЕ','Сектор 0x. Ставка сгорела.'); 
+          logGameEvent('wheel',currentBet,'lose',0); 
+      }
+      
       updateUI(); saveBalances();
       wheelSpinning=false; document.getElementById('btn-wheel-go').disabled=false;
       applyGlobalCooldown();
@@ -1094,6 +1146,14 @@
     // ==================== ВЫВОД ====================
     function submitSyncToBot(){
       if(!tg||!tg.sendData){ showModal('ОШИБКА','Вывод только из Telegram.'); return; }
+      
+      // ИСПРАВЛЕНИЕ: Блокировка вывода во время активных игр
+      if (isSpinning || crState === 'fly' || bjActive || mActive || wheelSpinning) {
+          play('boom'); haptic();
+          showModal('ОШИБКА', 'Дождитесь завершения текущей игры перед выводом средств!');
+          return;
+      }
+
       const sessionData={
         initData: tg.initData,
         sessionStart: sessionStartTime,
