@@ -790,8 +790,8 @@
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)],
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)]
       ];
-      if (Math.random() < 0.10) result[1] = result[0];
-      if (Math.random() < 0.05) result[2] = result[1] = result[0];
+      if (Math.random() < 0.03) result[1] = result[0];
+      if (Math.random() < 0.005) result[2] = result[1] = result[0];
 
       try {
         await animateReels(result);
