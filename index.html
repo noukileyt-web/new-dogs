@@ -95,7 +95,7 @@
     .load-fill { width: 0%; height: 100%; background: var(--color-phosphor); box-shadow: 0 0 10px var(--color-phosphor); transition: width 0.1s; }
 
     header { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(5,10,5,0.9); border: 1px solid var(--color-phosphor-dim); border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.8); margin-bottom: 8px; z-index: 10; transition: border-color 0.5s; }
-    .bal-box { font-size: 13px; font-weight: bold; display: flex; gap: 8px; }
+    .bal-box { font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; width: 100%;}
     .bal-box span { color: var(--color-amber); transition: color 0.5s; }
 
     .tabs { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; margin-bottom: 8px; z-index: 10; width: 100%; }
@@ -108,6 +108,7 @@
     .panel.active { display: flex; animation: panelFade 0.3s ease-out; }
     @keyframes panelFade { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 
+    /* ИГРЫ */
     .slot-frame { background: #010201; padding: 10px; border-radius: 10px; border: 2px solid var(--color-phosphor-dim); box-shadow: inset 0 0 20px #000; display: flex; justify-content: center; gap: 8px; margin-bottom: auto; margin-top: auto; }
     .reel { width: 75px; height: 85px; background: #020402; border: 1px solid var(--color-phosphor-dim); border-radius: 8px; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; box-shadow: inset 0 0 10px #000; }
     .reel-strip { position: absolute; top: 0; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; will-change: transform; }
@@ -122,9 +123,8 @@
 
     .bj-table { display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: center; margin-bottom: 10px; position: relative;}
     .card-zone { background: rgba(0,0,0,0.6); border: 1px dashed var(--color-phosphor-dim); border-radius: 10px; padding: 8px; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;}
-    .card-holder { display: flex; margin-top: 5px; justify-content: center; height: 75px; perspective: 1000px; }
-
-    .card-3d { width: 48px; height: 72px; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-out; transform: rotateY(180deg) translate3d(200px, -200px, -100px) scale(0.2); opacity: 0; margin-left: -10px; }
+    .card-holder { display: flex; justify-content: center; height: 75px; perspective: 1000px; margin-top: 5px;}
+    .card-3d { width: 48px; height: 72px; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-out; transform: rotateY(180deg) translate3d(200px, -200px, -100px) scale(0.2); opacity: 0; margin: 0 -10px; }
     .card-3d:first-child { margin-left: 0; }
     .card-3d.dealt { transform: rotateY(0deg) translate3d(0, 0, 0) scale(1); opacity: 1; }
     .card-3d.dealt.hidden-card { transform: rotateY(180deg) translate3d(0, 0, 0) scale(1); opacity: 1; }
@@ -187,6 +187,9 @@
     #terminalTrigger { display: block; position: fixed; bottom: 40px; right: 20px; z-index: 8600; background: rgba(10,20,10,0.95); padding: 12px; border-radius: 50%; color: var(--color-phosphor); border: 1px solid var(--color-phosphor-dim); font-size: 20px; transition: 0.3s var(--spring); pointer-events: auto !important; cursor: pointer; box-shadow: 0 0 20px rgba(0,255,0,0.2); }
     #terminalTrigger:active { transform: scale(0.85); }
 
+    /* ОХЛАЖДЕНИЕ ТЕРМИНАЛА */
+    #cooldownOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(1, 2, 1, 0.92); z-index: 9950; display: none; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 10px; border: 1px solid var(--color-rust); }
+
     #terminalScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #010a01; color: var(--color-phosphor); z-index: 9900; display: none; flex-direction: column; padding: 20px; font-family: monospace; overflow: hidden; box-shadow: inset 0 0 100px rgba(0,0,0,0.9), inset 0 0 30px rgba(255,255,255,0.05); border-radius: 20px; }
     #termLogBox { flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 12px; line-height: 1.4; color: #aaa; text-shadow: 0 0 2px #aaa; display: flex; flex-direction: column; justify-content: flex-end;}
     .log-entry { margin-bottom: 4px; word-break: break-all; }
@@ -218,8 +221,7 @@
       <div id="appScreen" style="display:none; flex-direction:column; height:100%; position: relative; z-index: 2;">
         <header>
           <div class="bal-box">
-            <span>БАЛАНС: <span id="balUI">10 000</span> 🪙</span>
-            <span>ФРИБЕТ: <span id="freeUI">0</span> 🎲</span>
+            <span style="font-size:16px;">БАЛАНС: <span id="balUI">10 000</span> 🪙</span>
           </div>
         </header>
 
@@ -233,6 +235,14 @@
         </div>
 
         <div class="panels-wrapper">
+          
+          <!-- ЭКРАН ОХЛАЖДЕНИЯ (ТОЛЬКО НАД ПАНЕЛЯМИ) -->
+          <div id="cooldownOverlay">
+            <div class="load-text" style="color: var(--color-rust); text-shadow: 0 0 15px var(--color-rust); animation: none;">ОХЛАЖДЕНИЕ ЯДРА</div>
+            <div class="load-text" style="font-size: 48px; margin-top: 20px;"><span id="cdTimer">10</span>с</div>
+            <div style="font-size: 12px; color: #888; margin-top: 10px; text-align: center;">Транзакции временно приостановлены.</div>
+          </div>
+
           <!-- СЛОТЫ -->
           <div id="tab-slots" class="panel active">
             <div class="slot-frame">
@@ -337,9 +347,7 @@
                 <h3 style="margin-bottom:10px; border-bottom:1px solid #ccc; padding-bottom:5px;">Декларация о доходах</h3>
                 Будет отправлен детальный отчёт о всех транзакциях.
                 <br><br>
-                Выводятся только реальные монеты. Фрибеты остаются для тренировки.
-                <br><br>
-                <i>После вывода сессия завершится.</i>
+                <i>После вывода сессия завершится, а баланс в основном боте будет обновлен.</i>
               </div>
               <button class="btn-sync" onclick="submitSyncToBot()">ЗАПРОСИТЬ ВЫВОД</button>
             </div>
@@ -381,29 +389,20 @@
     const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : { expand: () => {}, sendData: null, HapticFeedback: null, close: () => { window.close(); } };
     tg.expand();
 
-    // ==================== LOCAL STORAGE ====================
-    const db = {
-      get(key) { try { return localStorage.getItem(key); } catch(e) { return null; } },
-      set(key, value) { try { localStorage.setItem(key, value); } catch(e) {} },
-      remove(key) { try { localStorage.removeItem(key); } catch(e) {} }
-    };
-
     // ==================== СЕССИОННЫЕ ДАННЫЕ ====================
     const sessionStartTime = Date.now();
     let initialRealBalance = 0;
-    let initialFreeBalance = 0;
-    const gameEventsLog = [];
+    let gameEventsLog = [];
 
     // ==================== ИГРОВЫЕ ПЕРЕМЕННЫЕ ====================
     let realBalance = 10000;
-    let freeBalance = 0;
     let currentBet = 100;
     let totalSpins = 0;
     let maxWin = 0;
     let isCooldown = false;
     let cdInterval = null;
 
-    // ==================== ЗАЩИТА ОТ СБРОСА БАЛАНСА ====================
+    // ==================== ЗАГРУЗКА БАЛАНСА ====================
     function getQueryParam(param) {
       const params = new URLSearchParams(window.location.search);
       return params.get(param);
@@ -417,32 +416,13 @@
         if (parts.length >= 1 && !isNaN(parts[0])) urlBal = parts[0];
       }
 
-      const sessionActive = db.get('es_session_active');
-
-      if (sessionActive === '1') {
-        const savedBal = db.get("es_bal");
-        realBalance = savedBal ? parseInt(savedBal) : 10000;
-        const savedFree = db.get("es_freebet");
-        freeBalance = savedFree ? parseInt(savedFree) : 0;
+      if (urlBal !== null) {
+        realBalance = parseInt(urlBal);
       } else {
-        if (urlBal !== null) {
-          realBalance = parseInt(urlBal);
-          db.set("es_bal", realBalance.toString());
-        } else {
-          const saved = db.get("es_bal");
-          realBalance = saved ? parseInt(saved) : 10000;
-        }
-        const savedFree = db.get("es_freebet");
-        freeBalance = savedFree ? parseInt(savedFree) : 0;
-        db.set('es_session_active', '1');
+        realBalance = 10000;
       }
 
       initialRealBalance = realBalance;
-      initialFreeBalance = freeBalance;
-    }
-
-    function endSession() {
-      db.remove('es_session_active');
     }
 
     // ==================== ЛОГИРОВАНИЕ ====================
@@ -460,7 +440,6 @@
     // ==================== UI ====================
     function updateUI() {
       document.getElementById('balUI').innerText = realBalance.toLocaleString();
-      document.getElementById('freeUI').innerText = freeBalance.toLocaleString();
       ['slots','crash','bj','mines','wheel'].forEach(id => {
         const el = document.getElementById(`bet-${id}-val`);
         if (el) el.value = currentBet;
@@ -500,29 +479,17 @@
 
     // ==================== БАЛАНС: СПИСАНИЕ/ЗАЧИСЛЕНИЕ ====================
     function deductBet(amount) {
-      if (freeBalance >= amount) {
-        freeBalance -= amount;
-        return 'free';
-      } else if (realBalance >= amount) {
+      if (realBalance >= amount) {
         realBalance -= amount;
-        return 'real';
+        return true;
       } else {
-        return null;
+        return false;
       }
     }
 
-    function addWinnings(amount, source) {
-      if (source === 'free') {
-        freeBalance += amount;
-      } else {
-        realBalance += amount;
-      }
+    function addWinnings(amount) {
+      realBalance += amount;
       if (amount > maxWin) maxWin = amount;
-    }
-
-    function saveBalances() {
-      db.set("es_bal", realBalance.toString());
-      db.set("es_freebet", freeBalance.toString());
     }
 
     // ==================== МОДАЛКА ====================
@@ -544,16 +511,27 @@
     function applyGlobalCooldown() {
       if (cdInterval) { clearInterval(cdInterval); cdInterval = null; }
       isCooldown = true;
+      
+      const overlay = document.getElementById("cooldownOverlay");
+      const timerSpan = document.getElementById("cdTimer");
+      overlay.style.display = "flex";
+      
       const allButtons = document.querySelectorAll('.btn-act');
       allButtons.forEach(btn => btn.disabled = true);
+      
       let secondsLeft = 10;
+      timerSpan.innerText = secondsLeft;
       sysLog("СИСТЕМЫ ПЕРЕГРЕТЫ. ОХЛАЖДЕНИЕ (10 сек).", "err");
+      
       cdInterval = setInterval(() => {
         secondsLeft--;
+        timerSpan.innerText = secondsLeft;
+        
         if (secondsLeft <= 0) {
           clearInterval(cdInterval);
           cdInterval = null;
           isCooldown = false;
+          overlay.style.display = "none";
           allButtons.forEach(btn => btn.disabled = false);
           sysLog("СИСТЕМЫ ОХЛАЖДЕНЫ.", "sys");
         }
@@ -692,10 +670,9 @@
       if (command === 'CLEAR') {
         sysLog('Очистка не затрагивает баланс.', 'sys');
       } else if (command === 'STATS') {
-        sysLog(`Реальных монет: ${realBalance} | Фрибетов: ${freeBalance} | Ставка: ${currentBet} | Спинов: ${totalSpins} | Макс. выигрыш: ${maxWin}`);
+        sysLog(`Реальных монет: ${realBalance} | Ставка: ${currentBet} | Спинов: ${totalSpins} | Макс. выигрыш: ${maxWin}`);
       } else if (command === 'DIAGNOSTIC') {
-        const sessionFlag = db.get('es_session_active');
-        sysLog(`Флаг сессии: ${sessionFlag || 'не установлен'}`, sessionFlag ? 'sys' : 'err');
+        sysLog("Проверка связи с сервером... [OK]", 'sys');
       } else if (command === 'MATRIX') {
         sysLog("ИНИЦИАЛИЗАЦИЯ ПОТОКА...", 'sys');
         const interval = setInterval(() => {
@@ -710,28 +687,18 @@
         else if (theme === 'WHITE') { document.body.className = 'theme-white'; sysLog("Тема: WHITE", 'sys'); setTimeout(drawWheel, 100); }
         else if (theme === 'GREEN') { document.body.className = ''; sysLog("Тема: GREEN", 'sys'); setTimeout(drawWheel, 100); }
         else { sysLog("Доступные темы: GREEN, AMBER, WHITE", 'err'); }
-      } else if (command === 'PROMO') {
-        const promoCode = (args[1] || '').toLowerCase();
-        if (promoCode === 'freeterm') {
-          if (db.get('promo_freeterm') === '1') {
-            sysLog('Промокод уже активирован.', 'err');
-          } else {
-            freeBalance += 10000;
-            db.set('promo_freeterm', '1');
-            saveBalances();
-            updateUI();
-            logGameEvent('promo', 0, 'activated freeterm', 10000);
-            sysLog('Промокод FREETERM активирован. +10000 фрибетов.', 'sys');
-          }
-        } else {
-          sysLog('Неизвестный промокод.', 'err');
-        }
       } else if (command !== '') {
         sysLog("НЕИЗВЕСТНАЯ ДИРЕКТИВА.", 'err');
       }
     }
 
     // ==================== ВКЛАДКИ ====================
+    let isSlotsSpinning = false;
+    let isCrashFlying = false;
+    let isBjActive = false;
+    let isMinesActive = false;
+    let isWheelSpinning = false;
+
     function switchTab(tabId) {
       play('key'); haptic();
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -746,10 +713,9 @@
       sysLog(`Модуль: ${tabId.toUpperCase()}`);
     }
 
-    // ==================== 1. СЛОТЫ (1% на пару, 0.005% на три; x1.5 за пару, x3 за три) ====================
+    // ==================== 1. СЛОТЫ ====================
     const slotSymbols = ['💎','🍒','🍋','🔔','🔥','7️⃣'];
     const reelLength = 20, symbolSize = 85;
-    let isSpinning = false;
 
     function initSlots() {
       for (let i = 1; i <= 3; i++) {
@@ -760,13 +726,14 @@
     }
 
     async function playSlots() {
-      if (isSpinning || isCooldown) return;
-      const source = deductBet(currentBet);
-      if (!source) return showModal('ОШИБКА', 'Недостаточно средств.');
-      isSpinning = true;
+      if (isSlotsSpinning || isCooldown) return;
+      
+      const success = deductBet(currentBet);
+      if (!success) return showModal('ОШИБКА', 'Недостаточно средств.');
+      
+      isSlotsSpinning = true;
       document.getElementById('btn-spin').disabled = true;
       updateUI();
-      saveBalances();
       totalSpins++;
 
       const result = [
@@ -774,18 +741,18 @@
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)],
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)]
       ];
-      if (Math.random() < 0.01) result[1] = result[0];          // 1% на два совпадения
+      if (Math.random() < 0.01) result[1] = result[0];          // 1% на два
       if (Math.random() < 0.00005) result[2] = result[1] = result[0]; // 0.005% на три
 
       try { await animateReels(result); } catch (e) {}
 
       let multiplier = 0;
-      if (result[0] === result[1] && result[1] === result[2]) multiplier = 3;      // три одинаковых – x3
-      else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) multiplier = 1.5; // два одинаковых – x1.5
+      if (result[0] === result[1] && result[1] === result[2]) multiplier = 3;      
+      else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) multiplier = 1.5; 
 
-      const winAmount = Math.floor(currentBet * multiplier); // ИСПРАВЛЕНИЕ: Вычисляем выигрыш корректно
+      const winAmount = Math.floor(currentBet * multiplier); 
       if (winAmount > 0) {
-        addWinnings(winAmount, source); // ИСПРАВЛЕНИЕ: Передаем 'source', который вернул deductBet ('real' или 'free')
+        addWinnings(winAmount); 
         play('win');
         showModal('ПОБЕДА', `Множитель: x${multiplier}<br>Выигрыш: +${winAmount}`);
         logGameEvent('slots', currentBet, `win x${multiplier}`, winAmount);
@@ -795,8 +762,7 @@
         logGameEvent('slots', currentBet, 'lose', 0);
       }
       updateUI();
-      saveBalances();
-      isSpinning = false;
+      isSlotsSpinning = false;
       document.getElementById('btn-spin').disabled = false;
       applyGlobalCooldown();
     }
@@ -829,12 +795,11 @@
       });
     }
 
-    // ==================== 2. КРАШ (жёстче) ====================
+    // ==================== 2. КРАШ ====================
     const crashCanvas = document.getElementById('crashCanvas');
     const crashCtx = crashCanvas.getContext('2d');
-    let crashState = 'idle', crashMultiplier = 1.0, crashPoint = 1.0, crashBetActive = false, crashAnimationId = null, crashTime = 0;
+    let crState = 'idle', crashMultiplier = 1.0, crashPoint = 1.0, crashAnimationId = null, crashTime = 0;
     let crashParticles = [];
-    let activeCrashSource = null;
 
     class CrashParticle {
       constructor(x,y,speed) { this.x=x; this.y=y; this.life=1; this.vx=(Math.random()-0.5)*3; this.vy=Math.random()*3+speed; this.color=`rgba(255,${Math.floor(100+Math.random()*155)},0,`; }
@@ -851,21 +816,22 @@
     function drawCrashIdle() { crashCtx.clearRect(0,0,crashCanvas.width,crashCanvas.height); drawCrashGrid(0); crashCtx.fillStyle="#0f0"; crashCtx.font="12px Courier Prime"; crashCtx.fillText("ОЖИДАНИЕ ЗАПУСКА...",10,20); }
 
     function handleCrashAction() {
-      if(crashState==='idle'){
+      if(crState==='idle'){
         if(isCooldown) return;
-        activeCrashSource = deductBet(currentBet);
-        if(!activeCrashSource) return showModal('ОШИБКА','Недостаточно средств.');
-        updateUI(); saveBalances();
-        crashState='fly'; crashBetActive=true; crashTime=0; crashParticles=[];
+        const success = deductBet(currentBet);
+        if(!success) return showModal('ОШИБКА','Недостаточно средств.');
+        updateUI();
+        
+        crState='fly'; isCrashFlying = true; crashTime=0; crashParticles=[];
         crashPoint = Math.random() < 0.25 ? 1.0 : parseFloat((1.01 + Math.pow(Math.random(), 4.5) * 5).toFixed(2));
         document.getElementById('btn-crash-go').innerText='ЭВАКУАЦИЯ'; document.getElementById('btn-crash-go').classList.add('btn-rust');
         play('rocket');
         crashAnimationLoop();
-      } else if(crashState==='fly' && crashBetActive) { cashOutCrash(); }
+      } else if(crState==='fly' && isCrashFlying) { cashOutCrash(); }
     }
 
     function crashAnimationLoop() {
-      if(crashState!=='fly') return;
+      if(crState!=='fly') return;
       crashTime+=0.015; crashMultiplier = parseFloat((1.0+Math.pow(crashTime,1.8)).toFixed(2));
       const md = document.getElementById('crashMult'); md.innerText=`${crashMultiplier.toFixed(2)}x`; md.style.color=crashMultiplier>=8?'#fff':'var(--color-phosphor)';
       if(crashMultiplier>=8) md.classList.add('crash-shake'); else md.classList.remove('crash-shake');
@@ -885,35 +851,39 @@
       crashCtx.fillStyle="#ffb300"; crashCtx.font="22px sans-serif"; crashCtx.fillText("🚀",rx-10,ry+10);
 
       if(crashMultiplier>=crashPoint){
-        crashState='crashed'; play('boom'); haptic();
+        crState='crashed'; play('boom'); haptic();
         document.getElementById('crashMult').innerText='КРАШ!'; document.getElementById('crashMult').style.color='#f33';
         crashCtx.fillStyle="#f33"; crashCtx.font="36px sans-serif"; crashCtx.fillText("💥",rx-15,ry+15);
-        crashBetActive=false; logGameEvent('crash',currentBet,`crashed at ${crashMultiplier.toFixed(2)}x`,0);
-        showModal('КРАШ',`Ракета взорвалась на ${crashMultiplier.toFixed(2)}x. Ставка потеряна.`);
+        
+        if(isCrashFlying) {
+            isCrashFlying=false; 
+            logGameEvent('crash',currentBet,`crashed at ${crashMultiplier.toFixed(2)}x`,0);
+            showModal('КРАШ',`Ракета взорвалась на ${crashMultiplier.toFixed(2)}x. Ставка потеряна.`);
+        }
+        
         applyGlobalCooldown();
-        setTimeout(()=>{ crashState='idle'; document.getElementById('btn-crash-go').innerText='СТАРТ'; document.getElementById('btn-crash-go').classList.remove('btn-rust'); drawCrashIdle(); },2000);
+        setTimeout(()=>{ crState='idle'; document.getElementById('btn-crash-go').innerText='СТАРТ'; document.getElementById('btn-crash-go').classList.remove('btn-rust'); drawCrashIdle(); },2000);
       } else { crashAnimationId=requestAnimationFrame(crashAnimationLoop); }
     }
 
     function cashOutCrash() {
-      if(!crashBetActive||crashState!=='fly') return;
-      crashBetActive=false; cancelAnimationFrame(crashAnimationId);
+      if(!isCrashFlying||crState!=='fly') return;
+      isCrashFlying=false; cancelAnimationFrame(crashAnimationId);
       
-      const winAmount = Math.floor(currentBet * crashMultiplier); // ИСПРАВЛЕНИЕ: Вычисляем выигрыш корректно
-      addWinnings(winAmount, activeCrashSource); // ИСПРАВЛЕНИЕ: Используем сохраненный source от deductBet
-      updateUI(); saveBalances();
+      const winAmount = Math.floor(currentBet * crashMultiplier); 
+      addWinnings(winAmount); 
+      updateUI(); 
       
       play('win'); haptic(); logGameEvent('crash',currentBet,`cashout at ${crashMultiplier.toFixed(2)}x`,winAmount);
       showModal('УСПЕХ',`Вы катапультировались на ${crashMultiplier.toFixed(2)}x. Выигрыш: +${winAmount}`);
-      crashState='idle'; document.getElementById('btn-crash-go').innerText='СТАРТ'; document.getElementById('btn-crash-go').classList.remove('btn-rust');
+      crState='idle'; document.getElementById('btn-crash-go').innerText='СТАРТ'; document.getElementById('btn-crash-go').classList.remove('btn-rust');
       document.getElementById('crashMult').innerText='1.00x'; document.getElementById('crashMult').style.color='var(--color-phosphor)';
       drawCrashIdle(); applyGlobalCooldown();
     }
 
-    // ==================== 3. БЛЭКДЖЕК (без подсуживания) ====================
+    // ==================== 3. БЛЭКДЖЕК ====================
     const suits = ['♠','♥','♦','♣'], cardValues = ['2','3','4','5','6','7','8','9','10','10','10','10','Т'];
-    let playerHand=[], dealerHand=[], bjActive=false, bjOriginalBet=0, deck=[];
-    let activeBjSource = null;
+    let playerHand=[], dealerHand=[], bjOriginalBet=0, deck=[];
 
     function cardValue(c){ return c.val==='Т'?11:parseInt(c.val); }
     function calcScore(h){ let s=0,a=0; h.forEach(c=>{ s+=cardValue(c); if(c.val==='Т')a++; }); while(s>21&&a>0){ s-=10;a--; } return s; }
@@ -931,14 +901,14 @@
     async function placeCard(c,cont,hidden){ const el=createCard(c,hidden); cont.appendChild(el); play('card'); await sleep(30); el.classList.add('dealt'); await sleep(400); return el; }
 
     async function startBlackjack(){
-      if(isCooldown||bjActive) return;
+      if(isCooldown||isBjActive) return;
       
-      activeBjSource = deductBet(currentBet); 
-      if(!activeBjSource) return showModal('ОШИБКА','Недостаточно средств.');
+      const success = deductBet(currentBet); 
+      if(!success) return showModal('ОШИБКА','Недостаточно средств.');
       
-      bjOriginalBet=currentBet; updateUI(); saveBalances();
+      bjOriginalBet=currentBet; updateUI(); 
       deck=[]; suits.forEach(s=>cardValues.forEach(v=>deck.push({suit:s,val:v}))); deck.sort(()=>Math.random()-0.5);
-      playerHand=[]; dealerHand=[]; bjActive=false;
+      playerHand=[]; dealerHand=[]; isBjActive=false;
       document.getElementById('bj-ctrl-start').style.display='none';
       const gc=document.getElementById('bj-ctrl-game'); gc.style.display='flex'; gc.style.opacity='0.5'; gc.style.pointerEvents='none';
       document.getElementById('player-cards').innerHTML=''; document.getElementById('dealer-cards').innerHTML='';
@@ -951,40 +921,40 @@
       document.getElementById('player-score').innerText=calcScore(playerHand);
       dealerHand.push(drawCard()); await placeCard(dealerHand[1],document.getElementById('dealer-cards'),true);
 
-      bjActive=true; gc.style.opacity='1'; gc.style.pointerEvents='auto';
+      isBjActive=true; gc.style.opacity='1'; gc.style.pointerEvents='auto';
       document.getElementById('btn-bj-double').style.display=(realBalance>=currentBet)?'block':'none';
       if(calcScore(playerHand)===21) await blackjackStand();
     }
 
     async function blackjackHit(){
-      if(!bjActive) return; bjActive=false;
+      if(!isBjActive) return; isBjActive=false;
       document.getElementById('btn-bj-double').style.display='none';
       const gc=document.getElementById('bj-ctrl-game'); gc.style.opacity='0.5'; gc.style.pointerEvents='none';
       playerHand.push(drawCard()); await placeCard(playerHand[playerHand.length-1],document.getElementById('player-cards'),false);
       const score=calcScore(playerHand); document.getElementById('player-score').innerText=score;
-      if(score>21){ finishBj('bust'); } else { bjActive=true; gc.style.opacity='1'; gc.style.pointerEvents='auto'; }
+      if(score>21){ finishBj('bust'); } else { isBjActive=true; gc.style.opacity='1'; gc.style.pointerEvents='auto'; }
     }
 
     async function blackjackDouble(){
-      if(!bjActive||playerHand.length!==2||realBalance<currentBet) return;
-      bjActive=false; sysLog('БЛЭКДЖЕК: Удвоение.');
+      if(!isBjActive||playerHand.length!==2||realBalance<currentBet) return;
+      isBjActive=false; sysLog('БЛЭКДЖЕК: Удвоение.');
       
-      const doubleSource = deductBet(currentBet);
-      if(!doubleSource) return showModal('ОШИБКА','Недостаточно средств для удвоения.');
+      const success = deductBet(currentBet);
+      if(!success) return showModal('ОШИБКА','Недостаточно средств для удвоения.');
       
       bjOriginalBet *= 2; 
       currentBet *= 2; 
-      updateUI(); saveBalances();
+      updateUI(); 
       
       document.getElementById('btn-bj-double').style.display='none';
       const gc=document.getElementById('bj-ctrl-game'); gc.style.opacity='0.5'; gc.style.pointerEvents='none';
       playerHand.push(drawCard()); await placeCard(playerHand[playerHand.length-1],document.getElementById('player-cards'),false);
       const score=calcScore(playerHand); document.getElementById('player-score').innerText=score;
-      if(score>21) finishBj('bust'); else { bjActive=true; await blackjackStand(); }
+      if(score>21) finishBj('bust'); else { isBjActive=true; await blackjackStand(); }
     }
 
     async function blackjackStand(){
-      if(!bjActive) return; bjActive=false;
+      if(!isBjActive) return; isBjActive=false;
       document.getElementById('bj-ctrl-game').style.opacity='0.5'; document.getElementById('bj-ctrl-game').style.pointerEvents='none';
       const dc=document.getElementById('dealer-cards'); const hidden=dc.querySelector('.hidden-card');
       if(hidden){ hidden.classList.remove('hidden-card'); play('card'); document.getElementById('dealer-score').innerText=calcScore(dealerHand); await sleep(600); }
@@ -995,16 +965,16 @@
     }
 
     function finishBj(res){
-      bjActive=false; document.getElementById('bj-ctrl-start').style.display='flex'; document.getElementById('bj-ctrl-game').style.display='none';
+      isBjActive=false; document.getElementById('bj-ctrl-start').style.display='flex'; document.getElementById('bj-ctrl-game').style.display='none';
       
       if(res==='win'){ 
           let win = currentBet * 2; 
-          addWinnings(win, activeBjSource); // ИСПРАВЛЕНИЕ: Используем 'activeBjSource'
+          addWinnings(win); 
           play('win'); showModal('ПОБЕДА',`Выигрыш: +${win}`); 
           logGameEvent('blackjack',bjOriginalBet,'win',win); 
       }
       else if(res==='push'){ 
-          addWinnings(currentBet, activeBjSource); // ИСПРАВЛЕНИЕ: Возврат на тот же баланс, с которого списали
+          addWinnings(currentBet); 
           showModal('НИЧЬЯ','Ставка возвращена.'); 
           logGameEvent('blackjack',bjOriginalBet,'push',currentBet); 
       }
@@ -1013,37 +983,36 @@
           showModal('ПОРАЖЕНИЕ',res==='bust'?'Перебор.':'Дилер сильнее.'); 
           logGameEvent('blackjack',bjOriginalBet,res,0); 
       }
-      currentBet=bjOriginalBet; updateUI(); saveBalances(); applyGlobalCooldown();
+      currentBet=bjOriginalBet; updateUI(); applyGlobalCooldown();
     }
 
-    // ==================== 4. МИНЫ (коэффициент 0.85) ====================
-    let mCnt=3, mLoc=[], rTiles=0, mMult=1.0, mActive=false;
-    let activeMinesSource = null;
+    // ==================== 4. МИНЫ ====================
+    let mCnt=3, mLoc=[], rTiles=0, mMult=1.0;
     
     function updateMinesCount(){ mCnt=parseInt(document.getElementById('minesCountSelector').value); initMinesGrid(); play('key'); }
     function initMinesGrid(){
       const g=document.getElementById('minesGrid'); g.innerHTML='';
       for(let i=0;i<25;i++) g.innerHTML+=`<div class="mine-tile" onclick="clickMine(${i})"><div class="tile-content" style="backface-visibility:hidden;">❓</div></div>`;
-      mActive=false; document.getElementById('btn-mines-go').innerText='СДЕЛАТЬ СТАВКУ'; document.getElementById('btn-mines-go').classList.remove('btn-rust');
+      isMinesActive=false; document.getElementById('btn-mines-go').innerText='СДЕЛАТЬ СТАВКУ'; document.getElementById('btn-mines-go').classList.remove('btn-rust');
     }
     function handleMinesAction(){
       if(isCooldown) return;
-      if(!mActive) { 
-          activeMinesSource = deductBet(currentBet); 
-          if(!activeMinesSource) return showModal('ОШИБКА','Нет средств.'); 
+      if(!isMinesActive) { 
+          const success = deductBet(currentBet); 
+          if(!success) return showModal('ОШИБКА','Нет средств.'); 
           startMines(); 
       } else cashOutMines();
     }
     function startMines(){
-      mActive=true; rTiles=0; mMult=1.0; mLoc=[];
+      isMinesActive=true; rTiles=0; mMult=1.0; mLoc=[];
       while(mLoc.length<mCnt){ const r=Math.floor(Math.random()*25); if(!mLoc.includes(r)) mLoc.push(r); }
       document.getElementById('btn-mines-go').innerText='ЗАБРАТЬ ПРИБЫЛЬ'; document.getElementById('btn-mines-go').classList.add('btn-rust');
       const tiles=document.getElementById('minesGrid').children;
       for(let t of tiles){ t.className='mine-tile'; t.innerHTML='<div class="tile-content" style="backface-visibility:hidden; transform:rotateY(180deg);">❓</div>'; }
-      updateUI(); saveBalances();
+      updateUI(); 
     }
     function clickMine(i){
-      if(!mActive||isCooldown) return;
+      if(!isMinesActive||isCooldown) return;
       const t=document.getElementById('minesGrid').children[i];
       if(t.classList.contains('revealed')||t.classList.contains('exploded')) return;
       if(mLoc.includes(i)){
@@ -1059,23 +1028,23 @@
       }
     }
     function cashOutMines(){
-      if(!mActive) return;
-      const win = Math.floor(currentBet * mMult); // ИСПРАВЛЕНИЕ: Вычисляем выигрыш корректно
-      addWinnings(win, activeMinesSource); // ИСПРАВЛЕНИЕ: Используем 'activeMinesSource'
+      if(!isMinesActive) return;
+      const win = Math.floor(currentBet * mMult); 
+      addWinnings(win); 
       play('win');
       showModal('УСПЕХ',`Забрано на ${mMult.toFixed(2)}x. Выигрыш: +${win}`);
       logGameEvent('mines',currentBet,`cashout x${mMult.toFixed(2)}`,win);
       finishMines(true);
     }
     function finishMines(won){
-      mActive=false; document.getElementById('btn-mines-go').innerText='НАЧАТЬ ЗАНОВО'; document.getElementById('btn-mines-go').classList.remove('btn-rust');
+      isMinesActive=false; document.getElementById('btn-mines-go').innerText='НАЧАТЬ ЗАНОВО'; document.getElementById('btn-mines-go').classList.remove('btn-rust');
       if(!won){ const tiles=document.getElementById('minesGrid').children; mLoc.forEach(i=>{ if(!tiles[i].classList.contains('exploded')){ tiles[i].innerHTML='<div style="transform:rotateY(180deg);">💣</div>'; tiles[i].style.borderColor='#f33'; tiles[i].classList.add('revealed'); } }); }
-      updateUI(); saveBalances(); applyGlobalCooldown();
+      updateUI(); applyGlobalCooldown();
     }
 
-    // ==================== 5. КОЛЕСО (уменьшены шансы на крупные выигрыши) ====================
+    // ==================== 5. КОЛЕСО ====================
     const wCanvas=document.getElementById('wheelCanvas'), wCtx=wCanvas.getContext('2d');
-    let wheelSpinning=false, currentWheelAngle=0;
+    let currentWheelAngle=0;
 
     function drawWheel(){
       const style=getComputedStyle(document.body);
@@ -1098,36 +1067,43 @@
       });
     }
 
-    function getWheelIndex(){
+    function getRiggedWheelIndex(){
       const r=Math.random();
-      if(r<0.55) return [0,3,7][Math.floor(Math.random()*3)]; // 0x - 55%
-      if(r<0.80) return [2,5][Math.floor(Math.random()*2)];   // 0.5x - 25%
-      if(r<0.93) return 4;                                   // 1.5x - 13%
-      if(r<0.99) return 1;                                   // 2x - 6%
-      return 6;                                               // 5x - 1%
+      if(r<0.55) return [0,3,7][Math.floor(Math.random()*3)]; 
+      if(r<0.80) return [2,5][Math.floor(Math.random()*2)];   
+      if(r<0.93) return 4;                                   
+      if(r<0.99) return 1;                                   
+      return 6;                                               
     }
 
     async function startWheel(){
-      if(isCooldown||wheelSpinning) return;
-      const src = deductBet(currentBet); 
-      if(!src) return showModal('ОШИБКА','Нет средств.');
+      if(isCooldown||isWheelSpinning) return;
+      const success = deductBet(currentBet); 
+      if(!success) return showModal('ОШИБКА','Нет средств.');
       
-      wheelSpinning=true; document.getElementById('btn-wheel-go').disabled=true;
-      updateUI(); saveBalances();
+      isWheelSpinning=true; document.getElementById('btn-wheel-go').disabled=true;
+      updateUI(); 
       
-      const idx=getWheelIndex();
+      const idx=getRiggedWheelIndex();
       const targetAngle=(idx*45)+22.5;
-      const rotation=360-targetAngle+(Math.random()-0.5)*30;
-      currentWheelAngle+=360*5+rotation;
+      
+      // ИСПРАВЛЕНИЕ МАТЕМАТИКИ КОЛЕСА
+      const currentMod = currentWheelAngle % 360;
+      const dist = (360 - targetAngle) - currentMod;
+      const normalizedDist = dist >= 0 ? dist : dist + 360;
+      const randomOffset = (Math.random() - 0.5) * 20;
+      
+      currentWheelAngle += (360 * 5) + normalizedDist + randomOffset;
       wCanvas.style.transform=`rotate(${currentWheelAngle}deg)`;
+      
       play('rocket'); await sleep(4000);
       
       const mults=[0,2,0.5,0,1.5,0.5,5,0]; 
       const m=mults[idx];
-      const win=Math.floor(currentBet*m); // ИСПРАВЛЕНИЕ: Вычисляем выигрыш корректно
+      const win=Math.floor(currentBet*m); 
       
       if(win>0){ 
-          addWinnings(win, src); // ИСПРАВЛЕНИЕ: Используем 'src'
+          addWinnings(win); 
           play('win'); haptic(); 
           showModal('УСПЕХ',`Выпало: ${m}x. Выигрыш: +${win}`); 
           logGameEvent('wheel',currentBet,`win x${m}`,win); 
@@ -1138,40 +1114,87 @@
           logGameEvent('wheel',currentBet,'lose',0); 
       }
       
-      updateUI(); saveBalances();
-      wheelSpinning=false; document.getElementById('btn-wheel-go').disabled=false;
+      updateUI(); 
+      isWheelSpinning=false; document.getElementById('btn-wheel-go').disabled=false;
       applyGlobalCooldown();
     }
 
-    // ==================== ВЫВОД ====================
+    // ==================== 6. ВЫВОД СЕССИИ ====================
     function submitSyncToBot(){
       if(!tg||!tg.sendData){ showModal('ОШИБКА','Вывод только из Telegram.'); return; }
       
-      // ИСПРАВЛЕНИЕ: Блокировка вывода во время активных игр
-      if (isSpinning || crState === 'fly' || bjActive || mActive || wheelSpinning) {
+      if (isSlotsSpinning || isCrashFlying || isBjActive || isMinesActive || isWheelSpinning) {
           play('boom'); haptic();
           showModal('ОШИБКА', 'Дождитесь завершения текущей игры перед выводом средств!');
           return;
       }
 
+      // ИСПРАВЛЕНИЕ: Ограничиваем лог, чтобы не превысить лимит в 4096 байт Telegram API!
+      const safeEvents = gameEventsLog.slice(-10);
+
       const sessionData={
-        initData: tg.initData,
         sessionStart: sessionStartTime,
-        initialRealBalance, initialFreeBalance,
-        finalRealBalance: realBalance, finalFreeBalance: freeBalance,
-        events: gameEventsLog
+        initialRealBalance: initialRealBalance,
+        finalRealBalance: realBalance,
+        events: safeEvents
       };
-      tg.sendData(JSON.stringify(sessionData));
-      endSession();
-      tg.close();
+      
+      try {
+        tg.sendData(JSON.stringify(sessionData));
+        tg.close();
+      } catch (e) {
+        showModal('ОШИБКА', 'Не удалось отправить данные.');
+      }
     }
 
-    // ==================== ПАРАЛЛАКС ====================
+    // ==================== ПАРАЛЛАКС И ФОН ====================
     let tX=0,tY=0,cX=0,cY=0;
-    window.addEventListener('mousemove',e=>{ tX=(e.clientX/window.innerWidth-0.5)*2; tY=(e.clientY/window.innerHeight-0.5)*2; });
-    window.addEventListener('touchmove',e=>{ if(e.touches[0]){ tX=(e.touches[0].clientX/window.innerWidth-0.5)*2; tY=(e.touches[0].clientY/window.innerHeight-0.5)*2; } });
-    window.addEventListener('deviceorientation',e=>{ if(e.gamma&&e.beta){ let x=e.gamma/25,y=(e.beta-40)/30; if(Math.abs(tX)<0.1&&Math.abs(tY)<0.1){ tX=Math.max(-1,Math.min(1,x)); tY=Math.max(-1,Math.min(1,y)); } } });
-    function parallax(){ cX+=(tX-cX)*0.08; cY+=(tY-cY)*0.08; document.querySelector('.terminal-cabinet').style.setProperty('--rx',`${-cY*8}deg`); document.querySelector('.terminal-cabinet').style.setProperty('--ry',`${cX*8}deg`); requestAnimationFrame(parallax); }
+    
+    // Включаем гироскоп по умолчанию (для телефонов)
+    let gyroActive = true;
+    
+    window.addEventListener('deviceorientation',e=>{ 
+        if(gyroActive && e.gamma && e.beta){ 
+            let x = e.gamma / 25;
+            let y = (e.beta - 40) / 30; // Вычитаем 40 градусов, чтобы телефон смотрел прямо, когда держишь в руках
+            tX=Math.max(-1,Math.min(1,x)); 
+            tY=Math.max(-1,Math.min(1,y)); 
+        } 
+    });
+
+    // ПК: мышка управляет параллаксом
+    window.addEventListener('mousemove',e=>{ 
+        tX=(e.clientX/window.innerWidth-0.5)*2; 
+        tY=(e.clientY/window.innerHeight-0.5)*2; 
+        gyroActive = false; // Отключаем гироскоп, если есть мышь
+    });
+
+    // Телефон: если водим пальцем, гироскоп отключается и параллакс идет за пальцем
+    let touchTimeout;
+    window.addEventListener('touchstart', e => { gyroActive = false; });
+    window.addEventListener('touchmove',e=>{ 
+        if(e.touches[0]){ 
+            tX=(e.touches[0].clientX/window.innerWidth-0.5)*2; 
+            tY=(e.touches[0].clientY/window.innerHeight-0.5)*2; 
+            gyroActive = false;
+        } 
+    });
+    // Через секунду после того как убрали палец, гироскоп возвращается
+    window.addEventListener('touchend', e => {
+        clearTimeout(touchTimeout);
+        touchTimeout = setTimeout(() => { gyroActive = true; }, 1000);
+    });
+
+    function parallax(){ 
+        cX+=(tX-cX)*0.08; 
+        cY+=(tY-cY)*0.08; 
+        const cab = document.querySelector('.terminal-cabinet');
+        if (cab) {
+            cab.style.setProperty('--rx',`${-cY*8}deg`); 
+            cab.style.setProperty('--ry',`${cX*8}deg`); 
+        }
+        requestAnimationFrame(parallax); 
+    }
     parallax();
 
     const bg=document.getElementById('canvas-bg'), bgCtx=bg.getContext('2d');
