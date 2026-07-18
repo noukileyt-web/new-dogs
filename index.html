@@ -187,9 +187,6 @@
     #terminalTrigger { display: block; position: fixed; bottom: 40px; right: 20px; z-index: 8600; background: rgba(10,20,10,0.95); padding: 12px; border-radius: 50%; color: var(--color-phosphor); border: 1px solid var(--color-phosphor-dim); font-size: 20px; transition: 0.3s var(--spring); pointer-events: auto !important; cursor: pointer; box-shadow: 0 0 20px rgba(0,255,0,0.2); }
     #terminalTrigger:active { transform: scale(0.85); }
 
-    /* ОХЛАЖДЕНИЕ ТЕРМИНАЛА */
-    #cooldownOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(1, 2, 1, 0.92); z-index: 9950; display: none; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 10px; border: 1px solid var(--color-rust); }
-
     #terminalScreen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #010a01; color: var(--color-phosphor); z-index: 9900; display: none; flex-direction: column; padding: 20px; font-family: monospace; overflow: hidden; box-shadow: inset 0 0 100px rgba(0,0,0,0.9), inset 0 0 30px rgba(255,255,255,0.05); border-radius: 20px; }
     #termLogBox { flex: 1; overflow-y: auto; margin-bottom: 10px; font-size: 12px; line-height: 1.4; color: #aaa; text-shadow: 0 0 2px #aaa; display: flex; flex-direction: column; justify-content: flex-end;}
     .log-entry { margin-bottom: 4px; word-break: break-all; }
@@ -213,15 +210,16 @@
       <div class="crt-scanline"></div>
       <div class="crt-flicker"></div>
 
+      <!-- ИСПРАВЛЕННЫЙ ЗАГРУЗОЧНЫЙ ЭКРАН (Безопасный старт) -->
       <div id="loadingScreen">
-        <div class="load-text">ЗАГРУЗКА СИСТЕМЫ</div>
+        <div class="load-text" id="loadStatusText">ПОИСК СЕССИИ...</div>
         <div class="load-bar"><div class="load-fill" id="loadingBarFill"></div></div>
       </div>
 
       <div id="appScreen" style="display:none; flex-direction:column; height:100%; position: relative; z-index: 2;">
         <header>
           <div class="bal-box">
-            <span style="font-size:16px;">БАЛАНС: <span id="balUI">10 000</span> 🪙</span>
+            <span style="font-size:16px;">БАЛАНС: <span id="balUI">...</span> 🪙</span>
           </div>
         </header>
 
@@ -235,13 +233,6 @@
         </div>
 
         <div class="panels-wrapper">
-          
-          <!-- ЭКРАН ОХЛАЖДЕНИЯ (ТОЛЬКО НАД ПАНЕЛЯМИ) -->
-          <div id="cooldownOverlay">
-            <div class="load-text" style="color: var(--color-rust); text-shadow: 0 0 15px var(--color-rust); animation: none;">ОХЛАЖДЕНИЕ ЯДРА</div>
-            <div class="load-text" style="font-size: 48px; margin-top: 20px;"><span id="cdTimer">10</span>с</div>
-            <div style="font-size: 12px; color: #888; margin-top: 10px; text-align: center;">Транзакции временно приостановлены.</div>
-          </div>
 
           <!-- СЛОТЫ -->
           <div id="tab-slots" class="panel active">
@@ -385,9 +376,9 @@
   <div id="terminalTrigger" onclick="openTerminal()">💻</div>
 
   <script>
-    // ==================== TELEGRAM API ====================
-    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : { expand: () => {}, sendData: null, HapticFeedback: null, close: () => { window.close(); } };
-    tg.expand();
+    // ==================== TELEGRAM API И CLOUD STORAGE ====================
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) tg.expand();
 
     // ==================== СЕССИОННЫЕ ДАННЫЕ ====================
     const sessionStartTime = Date.now();
@@ -395,34 +386,128 @@
     let gameEventsLog = [];
 
     // ==================== ИГРОВЫЕ ПЕРЕМЕННЫЕ ====================
-    let realBalance = 10000;
+    let realBalance = 0; // Загружается из CloudStorage или URL
     let currentBet = 100;
     let totalSpins = 0;
     let maxWin = 0;
     let isCooldown = false;
     let cdInterval = null;
 
-    // ==================== ЗАГРУЗКА БАЛАНСА ====================
+    // ==================== ЗАЩИЩЕННАЯ ЗАГРУЗКА БАЛАНСА ====================
     function getQueryParam(param) {
       const params = new URLSearchParams(window.location.search);
       return params.get(param);
     }
 
-    function loadInitialBalance() {
+    async function loadInitialBalance() {
+      // 1. Анимация полоски начинается немедленно
+      let p = 0;
+      const bar = document.getElementById('loadingBarFill');
+      const statusText = document.getElementById('loadStatusText');
+
+      const intv = setInterval(() => {
+        p += Math.random() * 15; 
+        if (p >= 100) {
+            p = 100;
+            clearInterval(intv);
+        }
+        bar.style.width = `${p}%`;
+      }, 50);
+
+      // 2. Получение из URL
       let urlBal = getQueryParam("balance");
-      const startParam = tg.initDataUnsafe && tg.initDataUnsafe.start_param ? tg.initDataUnsafe.start_param : null;
+      const startParam = tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param ? tg.initDataUnsafe.start_param : null;
       if (startParam) {
         const parts = startParam.split("_");
         if (parts.length >= 1 && !isNaN(parts[0])) urlBal = parts[0];
       }
+      let parsedUrlBalance = urlBal !== null ? parseInt(urlBal) : 10000;
 
-      if (urlBal !== null) {
-        realBalance = parseInt(urlBal);
+      // 3. Универсальная функция завершения загрузки
+      const finishSetup = () => {
+        statusText.innerText = "ЗАПУСК ИНТЕРФЕЙСА...";
+        updateUI();
+        initSlots();
+        drawWheel();
+
+        // Ожидаем, пока визуал полоски не дойдет до 100%
+        const waitLoad = setInterval(() => {
+          if (p >= 100) {
+            clearInterval(waitLoad);
+            document.getElementById('loadingScreen').style.opacity = '0';
+            setTimeout(() => {
+              document.getElementById('loadingScreen').style.display = 'none';
+              document.getElementById('appScreen').style.display = 'flex';
+              resizeBg();
+              resizeCrashCanvas();
+            }, 300);
+          }
+        }, 100);
+      };
+
+      // 4. Опрос CloudStorage с Fallback (таймаутом)
+      if (tg && tg.CloudStorage) {
+        let isResolved = false;
+        
+        // Защита от вечной загрузки (таймаут 1.5 сек)
+        const fallback = setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true;
+            sysLog("Таймаут CloudStorage. Запуск локальной сессии.", "err");
+            realBalance = parsedUrlBalance;
+            initialRealBalance = parsedUrlBalance;
+            finishSetup();
+          }
+        }, 1500);
+
+        try {
+            tg.CloudStorage.getItems(['active_session', 'current_balance', 'initial_balance'], (err, values) => {
+              if (isResolved) return; // Если таймаут уже сработал - игнор
+              clearTimeout(fallback);
+              isResolved = true;
+
+              if (!err && values && values.active_session === 'true' && values.current_balance) {
+                // Восстановление сессии
+                realBalance = parseInt(values.current_balance);
+                initialRealBalance = values.initial_balance ? parseInt(values.initial_balance) : parsedUrlBalance;
+                sysLog("ВНИМАНИЕ: Восстановлена незавершенная сессия!", "err");
+              } else {
+                // Новая сессия
+                realBalance = parsedUrlBalance;
+                initialRealBalance = parsedUrlBalance;
+                try {
+                    tg.CloudStorage.setItems({
+                      'active_session': 'true',
+                      'initial_balance': initialRealBalance.toString(),
+                      'current_balance': realBalance.toString()
+                    });
+                } catch(e) {}
+              }
+              finishSetup();
+            });
+        } catch(e) {
+            // Если CloudStorage упал синхронно
+            if (!isResolved) {
+                isResolved = true;
+                clearTimeout(fallback);
+                realBalance = parsedUrlBalance;
+                initialRealBalance = parsedUrlBalance;
+                finishSetup();
+            }
+        }
       } else {
-        realBalance = 10000;
+        // Запуск без Telegram Cloud
+        realBalance = parsedUrlBalance;
+        initialRealBalance = parsedUrlBalance;
+        finishSetup();
       }
+    }
 
-      initialRealBalance = realBalance;
+    // ==================== СОХРАНЕНИЕ ПРОГРЕССА В ОБЛАКО ====================
+    function syncToCloudStorage() {
+        if (tg && tg.CloudStorage) {
+            try { tg.CloudStorage.setItem('current_balance', realBalance.toString()); } catch(e){}
+        }
     }
 
     // ==================== ЛОГИРОВАНИЕ ====================
@@ -481,6 +566,7 @@
     function deductBet(amount) {
       if (realBalance >= amount) {
         realBalance -= amount;
+        syncToCloudStorage(); // Сохраняем проигрыш сразу!
         return true;
       } else {
         return false;
@@ -489,6 +575,7 @@
 
     function addWinnings(amount) {
       realBalance += amount;
+      syncToCloudStorage(); // Сохраняем выигрыш
       if (amount > maxWin) maxWin = amount;
     }
 
@@ -507,33 +594,51 @@
       play('key');
     }
 
-    // ==================== ОХЛАЖДЕНИЕ ====================
+    // ==================== НОВАЯ СИСТЕМА ОХЛАЖДЕНИЯ ====================
+    const startButtons = [
+        { id: 'btn-spin', defaultText: 'ДЕКОДИРОВАТЬ' },
+        { id: 'btn-crash-go', defaultText: 'СТАРТ' },
+        { id: 'btn-bj-go', defaultText: 'СДАТЬ КАРТЫ' },
+        { id: 'btn-mines-go', defaultText: 'СДЕЛАТЬ СТАВКУ' },
+        { id: 'btn-wheel-go', defaultText: 'КРУТИТЬ' }
+    ];
+
     function applyGlobalCooldown() {
       if (cdInterval) { clearInterval(cdInterval); cdInterval = null; }
       isCooldown = true;
+      let secondsLeft = 15; // 15 секунд КД
       
-      const overlay = document.getElementById("cooldownOverlay");
-      const timerSpan = document.getElementById("cdTimer");
-      overlay.style.display = "flex";
-      
-      const allButtons = document.querySelectorAll('.btn-act');
-      allButtons.forEach(btn => btn.disabled = true);
-      
-      let secondsLeft = 10;
-      timerSpan.innerText = secondsLeft;
-      sysLog("СИСТЕМЫ ПЕРЕГРЕТЫ. ОХЛАЖДЕНИЕ (10 сек).", "err");
-      
+      sysLog(`ОХЛАЖДЕНИЕ ЯДРА (${secondsLeft} сек).`, "err");
+
+      function updateBtns(text, disabled) {
+        startButtons.forEach(b => {
+          const el = document.getElementById(b.id);
+          if (el) {
+            if(b.id === 'btn-mines-go' && isMinesActive) return; 
+            if(b.id === 'btn-crash-go' && crState === 'fly') return; 
+
+            el.disabled = disabled;
+            if (disabled) {
+              el.innerText = text;
+            } else {
+              el.innerText = b.defaultText;
+            }
+          }
+        });
+      }
+
+      updateBtns(`⏳ ${secondsLeft}с`, true);
+
       cdInterval = setInterval(() => {
         secondsLeft--;
-        timerSpan.innerText = secondsLeft;
-        
         if (secondsLeft <= 0) {
           clearInterval(cdInterval);
           cdInterval = null;
           isCooldown = false;
-          overlay.style.display = "none";
-          allButtons.forEach(btn => btn.disabled = false);
+          updateBtns('', false); 
           sysLog("СИСТЕМЫ ОХЛАЖДЕНЫ.", "sys");
+        } else {
+          updateBtns(`⏳ ${secondsLeft}с`, true);
         }
       }, 1000);
     }
@@ -624,7 +729,7 @@
           break;
       }
     }
-    function haptic() { if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); }
+    function haptic() { if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); }
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     // ==================== ТЕРМИНАЛ ====================
@@ -713,7 +818,7 @@
       sysLog(`Модуль: ${tabId.toUpperCase()}`);
     }
 
-    // ==================== 1. СЛОТЫ ====================
+    // ==================== 1. СЛОТЫ (НЕРФ) ====================
     const slotSymbols = ['💎','🍒','🍋','🔔','🔥','7️⃣'];
     const reelLength = 20, symbolSize = 85;
 
@@ -741,14 +846,14 @@
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)],
         slotSymbols[Math.floor(Math.random() * slotSymbols.length)]
       ];
-      if (Math.random() < 0.01) result[1] = result[0];          // 1% на два
-      if (Math.random() < 0.00005) result[2] = result[1] = result[0]; // 0.005% на три
+      if (Math.random() < 0.01) result[1] = result[0];          
+      if (Math.random() < 0.00005) result[2] = result[1] = result[0]; 
 
       try { await animateReels(result); } catch (e) {}
 
       let multiplier = 0;
-      if (result[0] === result[1] && result[1] === result[2]) multiplier = 3;      
-      else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) multiplier = 1.5; 
+      if (result[0] === result[1] && result[1] === result[2]) multiplier = 1.5;      
+      else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) multiplier = 1.1; 
 
       const winAmount = Math.floor(currentBet * multiplier); 
       if (winAmount > 0) {
@@ -763,7 +868,6 @@
       }
       updateUI();
       isSlotsSpinning = false;
-      document.getElementById('btn-spin').disabled = false;
       applyGlobalCooldown();
     }
 
@@ -795,7 +899,7 @@
       });
     }
 
-    // ==================== 2. КРАШ ====================
+    // ==================== 2. КРАШ (НЕРФ) ====================
     const crashCanvas = document.getElementById('crashCanvas');
     const crashCtx = crashCanvas.getContext('2d');
     let crState = 'idle', crashMultiplier = 1.0, crashPoint = 1.0, crashAnimationId = null, crashTime = 0;
@@ -823,7 +927,7 @@
         updateUI();
         
         crState='fly'; isCrashFlying = true; crashTime=0; crashParticles=[];
-        crashPoint = Math.random() < 0.25 ? 1.0 : parseFloat((1.01 + Math.pow(Math.random(), 4.5) * 5).toFixed(2));
+        crashPoint = Math.random() < 0.35 ? 1.0 : parseFloat((1.01 + Math.pow(Math.random(), 5) * 3.5).toFixed(2));
         document.getElementById('btn-crash-go').innerText='ЭВАКУАЦИЯ'; document.getElementById('btn-crash-go').classList.add('btn-rust');
         play('rocket');
         crashAnimationLoop();
@@ -876,12 +980,14 @@
       
       play('win'); haptic(); logGameEvent('crash',currentBet,`cashout at ${crashMultiplier.toFixed(2)}x`,winAmount);
       showModal('УСПЕХ',`Вы катапультировались на ${crashMultiplier.toFixed(2)}x. Выигрыш: +${winAmount}`);
-      crState='idle'; document.getElementById('btn-crash-go').innerText='СТАРТ'; document.getElementById('btn-crash-go').classList.remove('btn-rust');
+      crState='idle'; 
+      document.getElementById('btn-crash-go').innerText='СТАРТ'; 
+      document.getElementById('btn-crash-go').classList.remove('btn-rust');
       document.getElementById('crashMult').innerText='1.00x'; document.getElementById('crashMult').style.color='var(--color-phosphor)';
       drawCrashIdle(); applyGlobalCooldown();
     }
 
-    // ==================== 3. БЛЭКДЖЕК ====================
+    // ==================== 3. БЛЭКДЖЕК (НЕРФ) ====================
     const suits = ['♠','♥','♦','♣'], cardValues = ['2','3','4','5','6','7','8','9','10','10','10','10','Т'];
     let playerHand=[], dealerHand=[], bjOriginalBet=0, deck=[];
 
@@ -960,8 +1066,11 @@
       if(hidden){ hidden.classList.remove('hidden-card'); play('card'); document.getElementById('dealer-score').innerText=calcScore(dealerHand); await sleep(600); }
       while(calcScore(dealerHand)<17){ dealerHand.push(drawCard()); await placeCard(dealerHand[dealerHand.length-1],dc,false); document.getElementById('dealer-score').innerText=calcScore(dealerHand); await sleep(300); }
       await sleep(400);
+      
       const ps=calcScore(playerHand), ds=calcScore(dealerHand);
-      if(ds>21||ps>ds) finishBj('win'); else if(ps<ds) finishBj('lose'); else finishBj('push');
+      if(ds>21 || ps>ds) finishBj('win'); 
+      else if(ps<ds || (ps===ds && ps<21)) finishBj('lose_tie'); 
+      else finishBj('push');
     }
 
     function finishBj(res){
@@ -975,18 +1084,22 @@
       }
       else if(res==='push'){ 
           addWinnings(currentBet); 
-          showModal('НИЧЬЯ','Ставка возвращена.'); 
+          showModal('НИЧЬЯ','Blackjack! Ставка возвращена.'); 
           logGameEvent('blackjack',bjOriginalBet,'push',currentBet); 
       }
       else { 
           play('boom'); 
-          showModal('ПОРАЖЕНИЕ',res==='bust'?'Перебор.':'Дилер сильнее.'); 
+          let loseMsg = 'Дилер сильнее.';
+          if (res === 'bust') loseMsg = 'Перебор.';
+          else if (res === 'lose_tie') loseMsg = 'Ничья в пользу казино!';
+          
+          showModal('ПОРАЖЕНИЕ', loseMsg); 
           logGameEvent('blackjack',bjOriginalBet,res,0); 
       }
       currentBet=bjOriginalBet; updateUI(); applyGlobalCooldown();
     }
 
-    // ==================== 4. МИНЫ ====================
+    // ==================== 4. МИНЫ (ЖЕСТКИЙ НЕРФ) ====================
     let mCnt=3, mLoc=[], rTiles=0, mMult=1.0;
     
     function updateMinesCount(){ mCnt=parseInt(document.getElementById('minesCountSelector').value); initMinesGrid(); play('key'); }
@@ -1022,7 +1135,10 @@
       } else {
         t.innerHTML='<div style="transform:rotateY(180deg);">💎</div>'; t.className='mine-tile revealed'; play('card'); rTiles++;
         let p=1.0; for(let k=0;k<rTiles;k++) p*=(25-mCnt-k)/(25-k);
-        mMult=parseFloat((0.85/p).toFixed(2));
+        
+        let rawMult = parseFloat((0.60/p).toFixed(2));
+        mMult = rawMult < 1.01 ? 1.01 : rawMult;
+        
         document.getElementById('btn-mines-go').innerText=`ЗАБРАТЬ ${mMult.toFixed(2)}x`;
         if(rTiles===25-mCnt) cashOutMines();
       }
@@ -1037,7 +1153,10 @@
       finishMines(true);
     }
     function finishMines(won){
-      isMinesActive=false; document.getElementById('btn-mines-go').innerText='НАЧАТЬ ЗАНОВО'; document.getElementById('btn-mines-go').classList.remove('btn-rust');
+      isMinesActive=false; 
+      document.getElementById('btn-mines-go').innerText='НАЧАТЬ ЗАНОВО'; 
+      document.getElementById('btn-mines-go').classList.remove('btn-rust');
+      
       if(!won){ const tiles=document.getElementById('minesGrid').children; mLoc.forEach(i=>{ if(!tiles[i].classList.contains('exploded')){ tiles[i].innerHTML='<div style="transform:rotateY(180deg);">💣</div>'; tiles[i].style.borderColor='#f33'; tiles[i].classList.add('revealed'); } }); }
       updateUI(); applyGlobalCooldown();
     }
@@ -1069,9 +1188,9 @@
 
     function getRiggedWheelIndex(){
       const r=Math.random();
-      if(r<0.55) return [0,3,7][Math.floor(Math.random()*3)]; 
-      if(r<0.80) return [2,5][Math.floor(Math.random()*2)];   
-      if(r<0.93) return 4;                                   
+      if(r<0.60) return [0,3,7][Math.floor(Math.random()*3)]; 
+      if(r<0.85) return [2,5][Math.floor(Math.random()*2)];   
+      if(r<0.95) return 4;                                   
       if(r<0.99) return 1;                                   
       return 6;                                               
     }
@@ -1087,7 +1206,6 @@
       const idx=getRiggedWheelIndex();
       const targetAngle=(idx*45)+22.5;
       
-      // ИСПРАВЛЕНИЕ МАТЕМАТИКИ КОЛЕСА
       const currentMod = currentWheelAngle % 360;
       const dist = (360 - targetAngle) - currentMod;
       const normalizedDist = dist >= 0 ? dist : dist + 360;
@@ -1115,7 +1233,8 @@
       }
       
       updateUI(); 
-      isWheelSpinning=false; document.getElementById('btn-wheel-go').disabled=false;
+      isWheelSpinning=false; 
+      document.getElementById('btn-wheel-go').disabled=false;
       applyGlobalCooldown();
     }
 
@@ -1129,7 +1248,6 @@
           return;
       }
 
-      // ИСПРАВЛЕНИЕ: Ограничиваем лог, чтобы не превысить лимит в 4096 байт Telegram API!
       const safeEvents = gameEventsLog.slice(-10);
 
       const sessionData={
@@ -1140,6 +1258,9 @@
       };
       
       try {
+        if (tg && tg.CloudStorage) {
+            tg.CloudStorage.removeItem('active_session');
+        }
         tg.sendData(JSON.stringify(sessionData));
         tg.close();
       } catch (e) {
@@ -1150,26 +1271,23 @@
     // ==================== ПАРАЛЛАКС И ФОН ====================
     let tX=0,tY=0,cX=0,cY=0;
     
-    // Включаем гироскоп по умолчанию (для телефонов)
     let gyroActive = true;
     
     window.addEventListener('deviceorientation',e=>{ 
         if(gyroActive && e.gamma && e.beta){ 
             let x = e.gamma / 25;
-            let y = (e.beta - 40) / 30; // Вычитаем 40 градусов, чтобы телефон смотрел прямо, когда держишь в руках
+            let y = (e.beta - 40) / 30; 
             tX=Math.max(-1,Math.min(1,x)); 
             tY=Math.max(-1,Math.min(1,y)); 
         } 
     });
 
-    // ПК: мышка управляет параллаксом
     window.addEventListener('mousemove',e=>{ 
         tX=(e.clientX/window.innerWidth-0.5)*2; 
         tY=(e.clientY/window.innerHeight-0.5)*2; 
-        gyroActive = false; // Отключаем гироскоп, если есть мышь
+        gyroActive = false; 
     });
 
-    // Телефон: если водим пальцем, гироскоп отключается и параллакс идет за пальцем
     let touchTimeout;
     window.addEventListener('touchstart', e => { gyroActive = false; });
     window.addEventListener('touchmove',e=>{ 
@@ -1179,7 +1297,6 @@
             gyroActive = false;
         } 
     });
-    // Через секунду после того как убрали палец, гироскоп возвращается
     window.addEventListener('touchend', e => {
         clearTimeout(touchTimeout);
         touchTimeout = setTimeout(() => { gyroActive = true; }, 1000);
@@ -1205,28 +1322,8 @@
     function animBg(){ bgCtx.clearRect(0,0,bgW,bgH); bgCtx.fillStyle='rgba(0,255,0,0.1)'; stars.forEach(s=>{ bgCtx.beginPath(); bgCtx.arc(s.x,s.y,s.s,0,Math.PI*2); bgCtx.fill(); s.x+=s.vx; s.y+=s.vy; if(s.x<0)s.x=bgW; if(s.x>bgW)s.x=0; if(s.y<0)s.y=bgH; if(s.y>bgH)s.y=0; }); requestAnimationFrame(animBg); }
     animBg();
 
-    // ==================== СТАРТ ====================
     window.onload = () => {
       loadInitialBalance();
-      updateUI();
-      initSlots();
-      drawWheel();
-      let p=0; const bar=document.getElementById('loadingBarFill');
-      const intv=setInterval(()=>{
-        p+=Math.random()*20;
-        if(p>=100){
-          p=100; clearInterval(intv);
-          setTimeout(()=>{
-            document.getElementById('loadingScreen').style.opacity='0';
-            setTimeout(()=>{
-              document.getElementById('loadingScreen').style.display='none';
-              document.getElementById('appScreen').style.display='flex';
-              resizeBg(); resizeCrashCanvas();
-            },500);
-          },300);
-        }
-        bar.style.width=`${p}%`;
-      },40);
     };
   </script>
 </body>
